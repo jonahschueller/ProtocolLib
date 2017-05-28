@@ -1,5 +1,5 @@
 # ProtocolLib
-A Java Library for Network Protocols. You just have to specify your protocol, setup a network connection and start the protocol handler. 
+A Java Library for Network Protocols. You just have to specify your protocol, start a network connection and the library executes the rest. 
 
 The Library receives automatically DataPackets from the Socket. 
 All you have to do:
