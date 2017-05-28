@@ -1,3 +1,17 @@
+General: 
+
+Every protocol consists of nodes. These nodes specify different tasks which will be executed.
+For example: A protocol constists of the nodes "list" and the node "send". When a DataPacket arrives 
+the ProtocolHandler will extract the node (or key), which position in the header is specified in the Protocol, and execute the task which belongs to this node.
+
+The protocol has two major components. Header and data. 
+The header is represented with byte arrays so with the Method addHeaderItem() of the Protocol class you can add more and more header parts. 
+
+To send a DataPacket you need to create a object from the class DataPacket. There you can add your header and your data.
+
+A protocol can look like this:
+[-----header-----]  [----data----]
+    (8 bytes)         "Hello World!"
 
 
 Protocol Class:
@@ -125,6 +139,7 @@ Socket socket = new Socket("localhost", 9999);
 Datapacket<String> packet1 = new DataPacket<String>(socket);
 packet1.append("nodeOne");
 packet1.setData("Hello, world!");
+                                                            //Owner--- Data -------- Header
 DataPacket<String> packet2 = DataPacket.stringPacketBuilder(socket, "Hello, world!", "nodeTwo");
 //Objects initialised in the ProtocolHandler class annotation
 handler.send(packet1);
