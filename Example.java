@@ -83,11 +83,11 @@ public class Example {
                     //Create a new ProtocolHandler with the same Protocol.
                     ProtocolHandler<String> serverHandler = new ProtocolHandler<String>(protocol);
                     //Create DataPackets to send
-                    DataPacket<String> packet1 = DataPacket.stringPacketBuilder(socket, "Hallo!", "node1");
+                    DataPacket<String> packet1 = DataPacket.stringPacketBuilder(socket, "Hello!", "node1");
                     //Send the DataPacket
                     serverHandler.send(packet1);
                     //Create DataPackets to send
-                    DataPacket<String> packet2 = DataPacket.stringPacketBuilder(socket, "Hallo!", "node2");
+                    DataPacket<String> packet2 = DataPacket.stringPacketBuilder(socket, "Hello!", "node2");
                     //Send the DataPacket
                     serverHandler.send(packet2);
                 } catch (IOException e) {
