@@ -10,7 +10,7 @@ All you have to do:
 
 The file Example.java shows a example of how to use this lib. 
 
-Classes you need are Protocol<T>, ProtocolHandler<T>, DataPacket<T>. You can find a "Documentation" below. 
+Classes you need are Protocol<T>, ProtocolHandler<T>, DataPacket<T>. You can find a in the documentation.txt file. 
 
 
 
