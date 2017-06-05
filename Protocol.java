@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Created by jonahschueller on 23.05.17.
@@ -88,7 +89,7 @@ import java.util.ArrayList;
  */
 public abstract class Protocol<T> {
 
-    private static final Node ROOT = new Node(new Object(), (packet -> {}));
+    private final Node<T> ROOT = new Node<T>((T)new Object(), (packet -> {}));
     private static ArrayList<Protocol> protocols = new ArrayList();
 
     private int keyLen, keyPos;
@@ -122,15 +123,6 @@ public abstract class Protocol<T> {
         protocols.add(this);
     }
 
-
-    private void expandKeys(){
-        for (Node<T> node :
-                nodes) {
-            T ref = expand(node.getRef());
-            node.setRef(ref);
-        }
-    }
-
     /**
      * This Method adds a header part to the protocol.
      * @param len length in byte
@@ -158,31 +150,56 @@ public abstract class Protocol<T> {
 
         int dataLen = ProtocolHandler.intFromByteArray(len);
 
+
         byte[] data = new byte[dataLen];
 
         int v = stream.read(data);
+        if (v != dataLen) {
+            //System.out.println(v + "   " + dataLen);
+            return readRecursive(stream,Arrays.copyOf(data, v), v, dataLen, 0);
+        }
 
         return data;
     }
 
     protected DataPacket<T> read(Socket socket) throws IOException{
         DataPacket<T> packet = new DataPacket(socket);
+        return read(packet, socket.getInputStream());
+    }
 
-        for (int i = 0;i < header.size();i++) {
-            byte[] buffer = readBuffer(header.get(i),socket.getInputStream());
-            if (buffer == null){
-                try {
-                    throw new Exception("Invalid Header! Packet lost");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                return null;
-            }
-            packet.append(convert(buffer));
+    private byte[] readRecursive(InputStream stream, byte[] current, int currentlen, int len, int d) throws IOException{
+        int left = Math.abs(len - currentlen);
+        //System.out.println("Len: " + len + "  C_len: "  + currentlen + "  left " + left  + "  AVA: " + stream.available());
+        byte[] buf = new byte[left];
+        if (stream.available() < left){
+            waitForData(0);
         }
-        packet.setData(readData(socket.getInputStream()));
 
-        return packet;
+        int v = stream.read(buf);
+
+        if (v != left){
+            waitForData(stream.available());
+            buf = readRecursive(stream, buf, v, left, d++);
+        }
+        current = ProtocolHandler.addByteArray(current, buf);
+        if (current.length != len) {
+            //System.out.println("CURRENT : " + current.length + "   BUF: " + len);
+            return readRecursive(stream,current,current.length,len, d++);
+        }
+        return current;
+    }
+
+
+    private void waitForData(int v){
+        //System.out.println("V: " + v);
+        if (v == 0){
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+        }
     }
 
     protected DataPacket<T> read(DataPacket<T> packet, InputStream stream) throws IOException {
@@ -190,6 +207,7 @@ public abstract class Protocol<T> {
         for (int i = 0;i < header.size();i++) {
             byte[] buffer = readBuffer(header.get(i), stream);
             if (buffer == null){
+
                 try {
                     throw new Exception("Invalid Header! Packet lost");
                 } catch (Exception e) {
@@ -219,6 +237,13 @@ public abstract class Protocol<T> {
         }
         stream.write(ProtocolHandler.intToByteArray(packet.getData().length));
         stream.write(packet.getData());
+    }
+
+    public boolean hasMemory(){
+
+        long free = Runtime.getRuntime().freeMemory();
+        long total = Runtime.getRuntime().totalMemory();
+        return ((double) free / (double)total > .15);
     }
 
     private boolean containsRef(T ref){
@@ -307,7 +332,7 @@ public abstract class Protocol<T> {
      */
     protected abstract T evaluate(DataPacket<T> packet);
 
-    protected static Node getROOT() {
+    protected Node<T> getROOT() {
         return ROOT;
     }
 

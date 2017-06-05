@@ -112,6 +112,14 @@ public class DataPacket<T>{
     }
 
 
+    public String dataToString(){
+        return new String(getData());
+    }
+
+    public int dataLength(){
+        return getData().length;
+    }
+
     /**
      * Builds a Object based DataPacket.
      * @param owner DataPacket Owner

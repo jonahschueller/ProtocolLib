@@ -1,5 +1,6 @@
 package Protocol;
 
+import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
@@ -57,11 +58,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ProtocolHandler<T> implements Runnable, ProtocolConnection {
 
     public Protocol protocol;
-    private static final char EXPAND = ':';
-    public static final char SPLIT = ';';
+    private static final char EXPAND = ';';
+    public static final String SPLIT = ":";
     private Thread executer;
     private Node currentNode;
     private CopyOnWriteArrayList<DataPacket> packets;
+    private CopyOnWriteArrayList<DataPacket<T>> output;
     private boolean executing, listening, started;
 
     public ProtocolHandler(Protocol protocol) {
@@ -69,7 +71,8 @@ public class ProtocolHandler<T> implements Runnable, ProtocolConnection {
         this.protocol = protocol;
         executer = new Thread(this);
         packets = new CopyOnWriteArrayList<>();
-        currentNode = Protocol.getROOT();
+        output = new CopyOnWriteArrayList<DataPacket<T>>();
+        currentNode = protocol.getROOT();
         executing = false;
     }
 
@@ -125,7 +128,7 @@ public class ProtocolHandler<T> implements Runnable, ProtocolConnection {
                 }
 
             }
-            currentNode = Protocol.getROOT();
+            currentNode = protocol.getROOT();
             try {
                  protocol.print();
                 throw new ProtocolException(protocol.evaluate(packet));
@@ -181,6 +184,10 @@ public class ProtocolHandler<T> implements Runnable, ProtocolConnection {
         packet = protocol.read(packet, stream);
         if (packet != null)
             addDataPacket(packet);
+        else if (socket.isClosed()){
+            System.out.println("CLOSED");
+            stopListening();
+        }
     }
 
     /**
@@ -195,7 +202,11 @@ public class ProtocolHandler<T> implements Runnable, ProtocolConnection {
             public void run() {
                 while (listening){
                     try {
-                        read(socket, socket.getInputStream());
+                        if (protocol.hasMemory())
+                            read(socket, socket.getInputStream());
+                        else {
+                            Runtime.getRuntime().gc();
+                        }
                     } catch (IOException e) {
                         e.printStackTrace();
                         action.run();
@@ -245,16 +256,48 @@ public class ProtocolHandler<T> implements Runnable, ProtocolConnection {
         return sb.toString();
     }
 
-    /**
+    public static String content(int max, String... parts){
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0;i < parts.length;i++) {
+            String part = parts[i];
+            sb.append(part);
+            if (i < parts.length - 1 && i <  max)
+                sb.append(SPLIT);
+        }
+        return sb.toString();
+    }
+
+    public static String[] split(String parts){
+        String[] items = parts.split(SPLIT);
+        return items;
+    }
+
+    public static String[] split(String parts, int max){
+        String[] items = parts.split(SPLIT, max);
+        return items;
+    }
+
+    public static String[] split(byte[] bytes){
+        String[] items = new String(bytes).split(SPLIT);
+        return items;
+    }
+
+    public static String[] split(byte[] bytes, int max){
+        String[] items = new String(bytes).split(SPLIT, max);
+        return items;
+    }
+
+   /**
      * Expands a String to the same length of of the protocols keylength.
      * @param command String to be expanded
      * @return Expanded String.
      */
     public String expand(String command){
-        while (command.length() < protocol.getKeyLen()){
-            command += EXPAND;
+        StringBuilder commandBuilder = new StringBuilder(command);
+        while (commandBuilder.length() < protocol.getKeyLen()){
+            commandBuilder.append(EXPAND);
         }
-        return command;
+        return commandBuilder.toString();
     }
 
     /**
