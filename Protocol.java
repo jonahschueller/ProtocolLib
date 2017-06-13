@@ -1,9 +1,11 @@
 package Protocol;
 
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -134,32 +136,29 @@ public abstract class Protocol<T> {
         }
     }
 
+    private byte[] read(int len, InputStream stream) throws IOException{
 
-    private byte[] readBuffer(int len, InputStream stream) throws IOException{
-        byte[] buffer = new byte[len];
+        byte[] buffer = new byte[0];
+        int total = 0;
+        int left = len;
+        while(total != len){
+            byte[] bytes = new byte[left];
+            int r = stream.read(bytes);
+            if (r == -1)
+                continue;
 
-        int r = stream.read(buffer, 0, len);
-
-        return r != len ? null : buffer;
+            if (r != left){
+                bytes = Arrays.copyOf(bytes, r);
+            }
+            buffer = addByteArray(buffer, bytes);
+            total += r;
+        }
+        return buffer;
     }
 
     private byte[] readData(InputStream stream) throws IOException{
-        byte[] len = new byte[DATA_SIZE];
-
-        int r = stream.read(len);
-
-        int dataLen = ProtocolHandler.intFromByteArray(len);
-
-
-        byte[] data = new byte[dataLen];
-
-        int v = stream.read(data);
-        if (v != dataLen) {
-            //System.out.println(v + "   " + dataLen);
-            return readRecursive(stream,Arrays.copyOf(data, v), v, dataLen, 0);
-        }
-
-        return data;
+        int datalen = ProtocolHandler.intFromByteArray(read(DATA_SIZE, stream));
+        return read(datalen, stream);
     }
 
     protected DataPacket<T> read(Socket socket) throws IOException{
@@ -167,45 +166,11 @@ public abstract class Protocol<T> {
         return read(packet, socket.getInputStream());
     }
 
-    private byte[] readRecursive(InputStream stream, byte[] current, int currentlen, int len, int d) throws IOException{
-        int left = Math.abs(len - currentlen);
-        //System.out.println("Len: " + len + "  C_len: "  + currentlen + "  left " + left  + "  AVA: " + stream.available());
-        byte[] buf = new byte[left];
-        if (stream.available() < left){
-            waitForData(0);
-        }
-
-        int v = stream.read(buf);
-
-        if (v != left){
-            waitForData(stream.available());
-            buf = readRecursive(stream, buf, v, left, d++);
-        }
-        current = ProtocolHandler.addByteArray(current, buf);
-        if (current.length != len) {
-            //System.out.println("CURRENT : " + current.length + "   BUF: " + len);
-            return readRecursive(stream,current,current.length,len, d++);
-        }
-        return current;
-    }
-
-
-    private void waitForData(int v){
-        //System.out.println("V: " + v);
-        if (v == 0){
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-        }
-    }
 
     protected DataPacket<T> read(DataPacket<T> packet, InputStream stream) throws IOException {
 
-        for (int i = 0;i < header.size();i++) {
-            byte[] buffer = readBuffer(header.get(i), stream);
+        for (int i = 0; i < header.size(); i++) {
+            byte[] buffer = read(header.get(i), stream);
             if (buffer == null){
 
                 try {
@@ -222,21 +187,32 @@ public abstract class Protocol<T> {
         return packet;
     }
 
+    private void repairDataFlow(){
+
+    }
+
     public void sendPacket(DataPacket<T> packet, Socket socket) throws IOException{
         streamWrite(packet, socket.getOutputStream());
     }
 
     public void streamWrite(DataPacket<T> packet,OutputStream stream) throws IOException {
-        ArrayList<T> header1 = packet.getHeader();
-        for (int i = 0;i < header1.size();i++) {
-            T val = header1.get(i);
+        ArrayList<T> header = packet.getHeader();
+
+        for (int i = 0;i < header.size();i++) {
+
+            T val = header.get(i);
+
             if (i == keyPos){
                 val = expand(val);
             }
+            //System.out.println(convert(val).length + "  " + getHeader().get(i));
             stream.write(convert(val));
+
         }
         stream.write(ProtocolHandler.intToByteArray(packet.getData().length));
+
         stream.write(packet.getData());
+
     }
 
     public boolean hasMemory(){
@@ -332,6 +308,7 @@ public abstract class Protocol<T> {
      */
     protected abstract T evaluate(DataPacket<T> packet);
 
+
     protected Node<T> getROOT() {
         return ROOT;
     }
@@ -369,11 +346,12 @@ public abstract class Protocol<T> {
         for (int l :
                 getHeader()) {
             for (Integer pl: prot.getHeader()) {
-                if (l != (int)pl){
+                if (l != pl){
                     return false;
                 }
             }
         }
+
         if (getKeyLen() != prot.getKeyLen()){
             return false;
         }
@@ -382,6 +360,14 @@ public abstract class Protocol<T> {
             return false;
         }
         return true;
+    }
+
+
+    public static byte[] addByteArray(byte[] one, byte[] two){
+        byte[] end = new byte[one.length + two.length];
+        System.arraycopy(one, 0, end, 0, one.length);
+        System.arraycopy(two, 0, end, one.length, two.length);
+        return end;
     }
 
 

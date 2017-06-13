@@ -1,6 +1,7 @@
 package Protocol;
 
 import javax.xml.crypto.Data;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.Socket;
@@ -63,7 +64,6 @@ public class ProtocolHandler<T> implements Runnable, ProtocolConnection {
     private Thread executer;
     private Node currentNode;
     private CopyOnWriteArrayList<DataPacket> packets;
-    private CopyOnWriteArrayList<DataPacket<T>> output;
     private boolean executing, listening, started;
 
     public ProtocolHandler(Protocol protocol) {
@@ -71,7 +71,6 @@ public class ProtocolHandler<T> implements Runnable, ProtocolConnection {
         this.protocol = protocol;
         executer = new Thread(this);
         packets = new CopyOnWriteArrayList<>();
-        output = new CopyOnWriteArrayList<DataPacket<T>>();
         currentNode = protocol.getROOT();
         executing = false;
     }
@@ -182,12 +181,8 @@ public class ProtocolHandler<T> implements Runnable, ProtocolConnection {
     public void read(Socket socket, InputStream stream) throws IOException {
         DataPacket<T> packet = new DataPacket<T>(socket);
         packet = protocol.read(packet, stream);
-        if (packet != null)
-            addDataPacket(packet);
-        else if (socket.isClosed()){
-            System.out.println("CLOSED");
-            stopListening();
-        }
+
+        addDataPacket(packet);
     }
 
     /**
@@ -202,11 +197,7 @@ public class ProtocolHandler<T> implements Runnable, ProtocolConnection {
             public void run() {
                 while (listening){
                     try {
-                        if (protocol.hasMemory())
-                            read(socket, socket.getInputStream());
-                        else {
-                            Runtime.getRuntime().gc();
-                        }
+                        read(socket, socket.getInputStream());
                     } catch (IOException e) {
                         e.printStackTrace();
                         action.run();

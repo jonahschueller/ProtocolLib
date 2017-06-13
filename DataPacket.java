@@ -32,7 +32,6 @@ public class DataPacket<T>{
 
     private ArrayList<T> header;
     private byte[] data;
-    private int index, next;
     private Socket owner;
 
     public DataPacket(Socket owner){
@@ -95,13 +94,6 @@ public class DataPacket<T>{
         return header.size();
     }
 
-    public void resetNext(){
-        next = 0;
-    }
-
-    public void reset(){
-        index = 0;
-    }
 
     public Socket getOwner() {
         return owner;
