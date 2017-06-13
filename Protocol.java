@@ -187,10 +187,6 @@ public abstract class Protocol<T> {
         return packet;
     }
 
-    private void repairDataFlow(){
-
-    }
-
     public void sendPacket(DataPacket<T> packet, Socket socket) throws IOException{
         streamWrite(packet, socket.getOutputStream());
     }
@@ -301,12 +297,10 @@ public abstract class Protocol<T> {
      */
     protected abstract void protocolSetup();
 
-    /**
-     * The Method evaluate is used to extract the protocol node reference out of a DataPacket.
-     * @param packet
-     * @return
-     */
-    protected abstract T evaluate(DataPacket<T> packet);
+
+    protected T evaluate(DataPacket<T> packet){
+        return packet.get(keyPos);
+    }
 
 
     protected Node<T> getROOT() {
