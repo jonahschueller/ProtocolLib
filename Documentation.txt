@@ -24,7 +24,7 @@ if the reference is called.
 At the end of every Protocol will automatically be added a data part.
 To specify a Protocol a few things need to be set up:
  - Header parts and each length in byte (Method: addHeaderItem(byteLen))
- - node reference position in header (Method: setKeyPos(pos))
+ - key (command) position in header (Method: setKeyPos(pos))
  - Each nodes with reference and content-implementation
  Example Code how to set up a protocol:
 
